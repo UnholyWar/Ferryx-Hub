@@ -18,7 +18,7 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
-# Config path (opsiyonel ama ileride kolaylýk)
+# Config path (opsiyonel ama ileride kolaylýk)test
 RUN mkdir -p /etc/ferryx
 
 # IMPORTANT: root kalsýn (conf auto-create + /etc yazma için)
