@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: dockerhubuser/ferryx-hub   # <-- değiştir (DockerHub repo)
+  IMAGE_NAME: unholyw4r/ferryx-hub   # <-- değiştir (DockerHub repo)
   DOCKERFILE: Ferryx-Hub/Dockerfile      # <-- Dockerfile konumu (root ise: Dockerfile)
   CONTEXT: .                             # build context
 
