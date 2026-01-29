@@ -1,7 +1,10 @@
 ﻿using Ferryx_Hub.Config;
 using Ferryx_Hub.Config.ConfClass;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.IdentityModel.Tokens;
 using System.Net;
+using System.Text;
 
 // ✅ 1) CLI komutlarını en başta yakala
 // Usage: ferryx where | ferryx reconfig | ferryx restart
@@ -22,7 +25,41 @@ builder.Services.AddSingleton(ferryxConfig);
 
 // ✅ Sadece conf'tan port/bind
 builder.WebHost.UseUrls($"http://{ferryxConfig.Server.Bind}:{ferryxConfig.Server.Port}");
+var jwtKey = ferryxConfig.Security.JwtKey; // conf'tan
 
+
+builder.Services
+  .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+  .AddJwtBearer(o =>
+  {
+      o.RequireHttpsMetadata = false;
+
+      o.Events = new JwtBearerEvents
+      {
+          OnMessageReceived = context =>
+          {
+              // SignalR WebSocket/SSE için token'ı query'den al
+              var accessToken = context.Request.Query["access_token"];
+              var path = context.HttpContext.Request.Path;
+
+              if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/deploy"))
+                  context.Token = accessToken;
+
+              return Task.CompletedTask;
+          }
+      };
+
+      o.TokenValidationParameters = new TokenValidationParameters
+      {
+          ValidateIssuer = false,
+          ValidateAudience = false,
+          ValidateIssuerSigningKey = true,
+          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+          ValidateLifetime = false
+      };
+  });
+
+builder.Services.AddAuthorization();
 
 // Controllers (template'den)
 builder.Services.AddControllers();
@@ -30,29 +67,6 @@ builder.Services.AddControllers();
 // ✅ SignalR
 builder.Services.AddSignalR();
 
-// ✅ CORS (default *)
-// ✅ CORS (JSON: cors.allowedOrigins[])
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("default", policy =>
-    {
-        var origins = ferryxConfig.Cors.AllowedOrigins ?? new[] { "*" };
-
-        if (origins.Length == 1 && origins[0] == "*")
-        {
-            // Credentials yoksa AllowAnyOrigin kullanılabilir
-            policy.AllowAnyOrigin();
-        }
-        else
-        {
-            policy.WithOrigins(origins);
-        }
-
-        policy
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
 
 
 var app = builder.Build();
@@ -60,10 +74,9 @@ var app = builder.Build();
 // HTTP pipeline
 app.UseHttpsRedirection();
 
-// ✅ CORS middleware: Map'lerden önce
-app.UseCors("default");
 
-// Şimdilik auth yok ama kalsın (ileride JWT ekleyince kullanacağız)
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -72,7 +85,7 @@ app.MapControllers();
 app.MapGet("/", () => "Ferryx Hub is running 🚢");
 
 // ✅ SignalR Hub route
-app.MapHub<DeployHub>("/hubs/deploy");
+app.MapHub<DeployHub>("/hubs/deploy").RequireAuthorization(); 
 
 // ✅ Localhost-only control endpoint: restart
 // CLI "restart/reconfig" bunu çağırır, uygulama kapanır, supervisor restart eder (systemd/docker restart policy)
@@ -93,16 +106,16 @@ app.MapPost("/api/deploy", async (
     FerryxConfig cfg,
     IHubContext<DeployHub> hub) =>
 {
-    if (!cfg.Services.TryGetValue(req.Service, out var svc))
+    if (!cfg.Services.TryGetValue(req.Target, out var svc))
         return Results.BadRequest("Service not allowed");
 
-    Console.WriteLine($"[DEPLOY] {req.Service}:{req.Tag} ({req.Env})");
+    Console.WriteLine($"[DEPLOY] {req.Target}:{req.Tag} ({req.Env})");
 
     foreach (var group in svc.Groups)
         await hub.Clients.Group(group).SendAsync("NewDeploy", req);
 
     return Results.Ok(new { status = "published", groups = svc.Groups });
-});
+}).RequireAuthorization(); 
 
 
 // ✅ top-level dönüş hatası olmaması için RunAsync kullan
@@ -111,7 +124,16 @@ return 0;
 
 
 // ===== Types =====
-record DeployRequest(string Env, string Service, string Tag);
+public sealed class DeployRequest
+{
+    public string Env { get; init; } = "";
+    public string Target { get; init; } = ""; // repo / app / component
+
+    public string? Tag { get; init; }
+
+    public Dictionary<string, object>? Meta { get; init; }
+}
+
 
 class DeployHub : Hub
 {

@@ -1,4 +1,5 @@
 ﻿using Ferryx_Hub.Config.ConfClass;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Ferryx_Hub.Config;
@@ -18,6 +19,7 @@ public static class FerryxConfigLoader
             var cfg = Default();
             Write(cfg, overwrite: true);
             Console.WriteLine($"[CONFIG] Default config created at {FerryxPaths.ConfigPath}");
+            Console.WriteLine($"[token] {cfg.Security.JwtKey}");
             return cfg;
         }
 
@@ -51,11 +53,20 @@ public static class FerryxConfigLoader
         Write(cfg, overwrite: true);
         Console.WriteLine($"[CONFIG] Reconfigured: {FerryxPaths.ConfigPath}");
     }
-
+    private static string GenerateJwtKey()
+    {
+        // 32 byte = 256-bit
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes);
+    }
     private static FerryxConfig Default()
     {
         return new FerryxConfig
         {
+            Security=new SecurityConfig
+            {
+                JwtKey=GenerateJwtKey()
+            },
             Server = new ServerConfig
             {
                 Env = "prod",
@@ -63,15 +74,11 @@ public static class FerryxConfigLoader
                 Port = 18080,
                 ControlPort = 18081
             },
-            Cors = new CorsConfig
-            {
-                AllowedOrigins = new[] { "*" }
-            },
             Services = new Dictionary<string, ServiceConfig>(StringComparer.OrdinalIgnoreCase)
             {
-                ["my-repo"] = new ServiceConfig
+                ["my-app"] = new ServiceConfig
                 {
-                    Groups = new[] { "deployers-prod", "ops" }
+                    Groups = new[] { "deployers-prod", "pre-prod" }
                 }
             }
         };
@@ -93,7 +100,6 @@ public static class FerryxConfigLoader
         cfg.Server.Bind = string.IsNullOrWhiteSpace(cfg.Server.Bind) ? "0.0.0.0" : cfg.Server.Bind;
 
         // AllowedOrigins null ise "*"
-        cfg.Cors.AllowedOrigins ??= new[] { "*" };
 
         // Services null ise boş sözlük
         cfg.Services ??= new Dictionary<string, ServiceConfig>(StringComparer.OrdinalIgnoreCase);
