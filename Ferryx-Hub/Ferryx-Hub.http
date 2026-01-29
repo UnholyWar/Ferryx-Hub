@@ -1,0 +1,6 @@
+@Ferryx_Hub_HostAddress = http://localhost:5147
+
+GET {{Ferryx_Hub_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
