@@ -1,83 +1,120 @@
-﻿using System.Text;
+﻿using Ferryx_Hub.Config.ConfClass;
+using System.Text.Json;
 
-namespace Ferryx_Hub.Config
+namespace Ferryx_Hub.Config;
+
+public static class FerryxConfigLoader
 {
-    public class FerryxConfigLoader
+    private static readonly JsonSerializerOptions JsonOpts = new()
     {
-        private const string ConfigPath = "/etc/ferryx/ferryx-hub.conf";
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
 
-        public static FerryxConfig Load()
+    public static FerryxConfig Load()
+    {
+        if (!File.Exists(FerryxPaths.ConfigPath))
         {
-            if (!File.Exists(ConfigPath))
-            {
-                CreateDefaultConfig();
-                Console.WriteLine($"[CONFIG] Default config created at {ConfigPath}");
-            }
-
-            return Parse(File.ReadAllLines(ConfigPath));
+            var cfg = Default();
+            Write(cfg, overwrite: true);
+            Console.WriteLine($"[CONFIG] Default config created at {FerryxPaths.ConfigPath}");
+            return cfg;
         }
 
-        private static void CreateDefaultConfig()
+        var json = File.ReadAllText(FerryxPaths.ConfigPath);
+        var cfgLoaded = JsonSerializer.Deserialize<FerryxConfig>(json, JsonOpts);
+
+        if (cfgLoaded is null)
+            throw new InvalidOperationException($"[CONFIG] Invalid JSON at {FerryxPaths.ConfigPath}");
+
+        Normalize(cfgLoaded);
+        Validate(cfgLoaded);
+
+        return cfgLoaded;
+    }
+
+    public static FerryxConfig LoadOrCreateDefault() => Load();
+
+    // CLI: ferryx reconfig
+    public static void Reconfig()
+    {
+        Directory.CreateDirectory(FerryxPaths.ConfigDir);
+
+        if (File.Exists(FerryxPaths.ConfigPath))
         {
-            Directory.CreateDirectory("/etc/ferryx");
-
-            var sb = new StringBuilder();
-            sb.AppendLine("[server]");
-            sb.AppendLine("env = prod");
-            sb.AppendLine();
-            sb.AppendLine("[cors]");
-            sb.AppendLine("allowed_origins = *");
-            sb.AppendLine();
-            sb.AppendLine("[deploy]");
-            sb.AppendLine("allowed_services = my-app");
-            sb.AppendLine("deployer_group = ferryx-deployers-prod");
-
-            File.WriteAllText(ConfigPath, sb.ToString());
+            var backup = FerryxPaths.ConfigPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".bak";
+            File.Copy(FerryxPaths.ConfigPath, backup, overwrite: true);
+            Console.WriteLine($"[CONFIG] Backup created: {backup}");
         }
 
-        private static FerryxConfig Parse(string[] lines)
+        var cfg = Default();
+        Write(cfg, overwrite: true);
+        Console.WriteLine($"[CONFIG] Reconfigured: {FerryxPaths.ConfigPath}");
+    }
+
+    private static FerryxConfig Default()
+    {
+        return new FerryxConfig
         {
-            var config = new FerryxConfig();
-            string section = "";
-
-            foreach (var raw in lines)
+            Server = new ServerConfig
             {
-                var line = raw.Trim();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith(";"))
-                    continue;
-
-                if (line.StartsWith("[") && line.EndsWith("]"))
+                Env = "prod",
+                Bind = "0.0.0.0",
+                Port = 18080,
+                ControlPort = 18081
+            },
+            Cors = new CorsConfig
+            {
+                AllowedOrigins = new[] { "*" }
+            },
+            Services = new Dictionary<string, ServiceConfig>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["my-repo"] = new ServiceConfig
                 {
-                    section = line[1..^1];
-                    continue;
-                }
-
-                var parts = line.Split('=', 2);
-                if (parts.Length != 2) continue;
-
-                var key = parts[0].Trim();
-                var value = parts[1].Trim();
-
-                switch (section)
-                {
-                    case "server":
-                        if (key == "env") config.Env = value;
-                        break;
-
-                    case "cors":
-                        if (key == "allowed_origins") config.AllowedOrigins = value;
-                        break;
-
-                    case "deploy":
-                        if (key == "allowed_services")
-                            config.AllowedServices = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                        if (key == "deployer_group")
-                            config.DeployerGroup = value;
-                        break;
+                    Groups = new[] { "deployers-prod", "ops" }
                 }
             }
+        };
+    }
 
-            return config;
+    private static void Write(FerryxConfig cfg, bool overwrite)
+    {
+        Directory.CreateDirectory(FerryxPaths.ConfigDir);
+
+        if (!overwrite && File.Exists(FerryxPaths.ConfigPath))
+            return;
+
+        var json = JsonSerializer.Serialize(cfg, JsonOpts);
+        File.WriteAllText(FerryxPaths.ConfigPath, json);
+    }
+
+    private static void Normalize(FerryxConfig cfg)
+    {
+        cfg.Server.Bind = string.IsNullOrWhiteSpace(cfg.Server.Bind) ? "0.0.0.0" : cfg.Server.Bind;
+
+        // AllowedOrigins null ise "*"
+        cfg.Cors.AllowedOrigins ??= new[] { "*" };
+
+        // Services null ise boş sözlük
+        cfg.Services ??= new Dictionary<string, ServiceConfig>(StringComparer.OrdinalIgnoreCase);
+
+        // Her service için null groups -> empty
+        foreach (var k in cfg.Services.Keys.ToList())
+        {
+            cfg.Services[k] ??= new ServiceConfig();
+            cfg.Services[k].Groups ??= Array.Empty<string>();
         }
+    }
+
+    private static void Validate(FerryxConfig cfg)
+    {
+        if (cfg.Server.Port is < 1 or > 65535)
+            throw new InvalidOperationException("[CONFIG] server.port must be 1..65535");
+
+        if (cfg.Server.ControlPort is < 1 or > 65535)
+            throw new InvalidOperationException("[CONFIG] server.controlPort must be 1..65535");
+
+        if (cfg.Server.Port == cfg.Server.ControlPort)
+            throw new InvalidOperationException("[CONFIG] server.port and server.controlPort must be different");
     }
 }
