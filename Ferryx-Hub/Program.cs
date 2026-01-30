@@ -143,9 +143,23 @@ class DeployHub : Hub
         return base.OnConnectedAsync();
     }
 
+    public async Task JoinGroup(string group)
+    {
+        if (string.IsNullOrWhiteSpace(group))
+            throw new HubException("Group is required.");
+
+        // (opsiyon) güvenlik: group format kuralı koy
+        // örn sadece a-zA-Z0-9-_.
+        if (group.Length > 64) throw new HubException("Group too long.");
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, group);
+        Console.WriteLine($"[HUB] {Context.ConnectionId} joined group: {group}");
+    }
+
     public override Task OnDisconnectedAsync(Exception? exception)
     {
         Console.WriteLine($"[HUB] Disconnected: {Context.ConnectionId} | {exception?.Message}");
         return base.OnDisconnectedAsync(exception);
     }
 }
+
