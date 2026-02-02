@@ -9,7 +9,7 @@ namespace Ferryx_Hub.Helper
     {
         public static string CreateJwtFromKey(string jwtKey)
         {
-            var keyBytes = Encoding.UTF8.GetBytes(jwtKey); // Hub da aynı mantıkla doğruluyor
+            var keyBytes = Convert.FromBase64String(jwtKey); // ✅ doğrulamayla aynı
             var signingKey = new SymmetricSecurityKey(keyBytes);
             var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
@@ -21,5 +21,6 @@ namespace Ferryx_Hub.Helper
 
             return new JwtSecurityTokenHandler().WriteToken(jwt);
         }
+
     }
 }
