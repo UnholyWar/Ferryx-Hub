@@ -1,4 +1,5 @@
 ﻿using Ferryx_Hub.Config.ConfClass;
+using Ferryx_Hub.Helper;
 using System.Net.Http;
 
 namespace Ferryx_Hub.Config;
@@ -19,8 +20,18 @@ public static class FerryxCli
                 {
                     var cfg = FerryxConfigLoader.LoadOrCreateDefault();
                     Console.WriteLine(cfg.Security?.JwtKey ?? "");
+                    Console.WriteLine("it's for worker -e");
                     return 0;
                 }
+            case "jwt":
+                {
+                    var cfg = FerryxConfigLoader.LoadOrCreateDefault();
+                    var token = JWTHelper.CreateJwtFromKey(cfg.Security.JwtKey);
+                    var jwt= Uri.EscapeDataString(token);
+                    Console.WriteLine(jwt);
+                    return 0;
+                }
+
 
 
             default:

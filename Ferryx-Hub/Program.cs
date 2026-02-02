@@ -9,7 +9,7 @@ using System.Text;
 // ✅ 1) CLI komutlarını en başta yakala
 // Usage: ferryx where | ferryx reconfig | ferryx restart
 var cmd = (args.FirstOrDefault() ?? "serve").ToLowerInvariant();
-if (cmd is "where" or "reconfig" or "token")
+if (cmd is "where" or "reconfig" or "token" or "jwt")
 {
     var code = await FerryxCli.RunAsync(cmd);
     return code;
