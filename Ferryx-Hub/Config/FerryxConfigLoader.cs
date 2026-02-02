@@ -39,7 +39,7 @@ public static class FerryxConfigLoader
 
 
 
-    private static string GenerateJwtKey()
+    private static string GenerateKey()
     {
         // 32 byte = 256-bit
         var bytes = RandomNumberGenerator.GetBytes(32);
@@ -51,11 +51,11 @@ public static class FerryxConfigLoader
         {
             Security=new SecurityConfig
             {
-                JwtKey=GenerateJwtKey()
+                JwtKey=GenerateKey()
             },
             Server = new ServerConfig
             {
-                Env = "prod",
+                Env = "hub",
                 Bind = "0.0.0.0",
                 Port = 18080,
                 ControlPort = 18081
@@ -64,7 +64,7 @@ public static class FerryxConfigLoader
             {
                 ["my-app"] = new ServiceConfig
                 {
-                    Groups = new[] { "deployers-prod", "pre-prod" }
+                    Groups = new[] {"pre-prod" ,"prod"}
                 }
             }
         };
