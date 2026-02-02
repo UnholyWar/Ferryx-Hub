@@ -27,8 +27,7 @@ public static class FerryxCli
                 {
                     var cfg = FerryxConfigLoader.LoadOrCreateDefault();
                     var token = JWTHelper.CreateJwtFromKey(cfg.Security.JwtKey);
-                    var jwt= Uri.EscapeDataString(token);
-                    Console.WriteLine(jwt);
+                    Console.WriteLine(token);
                     return 0;
                 }
 

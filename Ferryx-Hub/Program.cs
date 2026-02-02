@@ -41,27 +41,12 @@ builder.Services
           {
               var path = context.HttpContext.Request.Path;
 
+              // Sadece SignalR hub için query token
               if (path.StartsWithSegments("/hubs/deploy"))
               {
-                  // 1) Önce query: ?access_token=
                   var accessToken = context.Request.Query["access_token"].ToString();
-
                   if (!string.IsNullOrWhiteSpace(accessToken))
-                  {
                       context.Token = accessToken;
-                  }
-                  else
-                  {
-                      // 2) Yoksa Authorization: Bearer <token>
-                      var auth = context.Request.Headers.Authorization.ToString();
-                      const string prefix = "Bearer ";
-
-                      if (!string.IsNullOrWhiteSpace(auth) &&
-                          auth.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                      {
-                          context.Token = auth.Substring(prefix.Length).Trim();
-                      }
-                  }
               }
 
               return Task.CompletedTask;
@@ -69,14 +54,17 @@ builder.Services
 
       };
 
+      var keyBytes = Convert.FromBase64String(jwtKey);
+
       o.TokenValidationParameters = new TokenValidationParameters
       {
           ValidateIssuer = false,
           ValidateAudience = false,
           ValidateIssuerSigningKey = true,
-          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+          IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
           ValidateLifetime = false
       };
+
   });
 
 builder.Services.AddAuthorization();
