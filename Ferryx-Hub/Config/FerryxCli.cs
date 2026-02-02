@@ -12,18 +12,15 @@ public static class FerryxCli
                 Console.WriteLine(FerryxPaths.ConfigPath);
                 return 0;
 
-            case "restart":
-                return await RequestRestartAsync();
-
             case "reconfig":
-                FerryxConfigLoader.Reconfig();   // config yenilenir
                 return await RequestRestartAsync();
 
             default:
-                Console.WriteLine("Usage: ferryx where | reconfig | restart");
+                Console.WriteLine("Usage: ferryx where | reconfig");
                 return 1;
         }
     }
+
 
     private static async Task<int> RequestRestartAsync()
     {

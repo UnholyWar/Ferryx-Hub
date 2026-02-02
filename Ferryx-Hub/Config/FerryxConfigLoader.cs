@@ -37,22 +37,8 @@ public static class FerryxConfigLoader
 
     public static FerryxConfig LoadOrCreateDefault() => Load();
 
-    // CLI: ferryx reconfig
-    public static void Reconfig()
-    {
-        Directory.CreateDirectory(FerryxPaths.ConfigDir);
 
-        if (File.Exists(FerryxPaths.ConfigPath))
-        {
-            var backup = FerryxPaths.ConfigPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".bak";
-            File.Copy(FerryxPaths.ConfigPath, backup, overwrite: true);
-            Console.WriteLine($"[CONFIG] Backup created: {backup}");
-        }
 
-        var cfg = Default();
-        Write(cfg, overwrite: true);
-        Console.WriteLine($"[CONFIG] Reconfigured: {FerryxPaths.ConfigPath}");
-    }
     private static string GenerateJwtKey()
     {
         // 32 byte = 256-bit

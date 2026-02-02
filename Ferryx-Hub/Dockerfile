@@ -1,4 +1,4 @@
-# -------- BUILD --------
+ï»¿# -------- BUILD --------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -14,14 +14,18 @@ RUN dotnet publish "Ferryx-Hub.csproj" -c $BUILD_CONFIGURATION -o /app/publish /
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
-# Ferryx default port
 EXPOSE 18080
 
-# Config path (opsiyonel ama ileride kolaylýk)test
 RUN mkdir -p /etc/ferryx
 
-# IMPORTANT: root kalsýn (conf auto-create + /etc yazma için)
-# USER root (default zaten root)
-
 COPY --from=build /app/publish .
+
+# âœ… ferryx CLI wrapper
+RUN printf '#!/bin/sh\nexec dotnet /app/Ferryx-Hub.dll "$@"\n' > /usr/local/bin/ferryx \
+ && chmod +x /usr/local/bin/ferryx
+
+
 ENTRYPOINT ["dotnet", "Ferryx-Hub.dll"]
+# CMD'yi tamamen kaldÄ±r
+
+
