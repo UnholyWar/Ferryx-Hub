@@ -16,13 +16,7 @@ public static class FerryxCli
 
             case "reconfig":
                 return await RequestRestartAsync();
-            case "token":
-                {
-                    var cfg = FerryxConfigLoader.LoadOrCreateDefault();
-                    Console.WriteLine(cfg.Security?.JwtKey ?? "");
-                    Console.WriteLine("it's for worker -e");
-                    return 0;
-                }
+       
             case "jwt":
                 {
                     var cfg = FerryxConfigLoader.LoadOrCreateDefault();
