@@ -38,15 +38,34 @@ builder.Services
       {
           OnMessageReceived = context =>
           {
-              // SignalR WebSocket/SSE için token'ı query'den al
-              var accessToken = context.Request.Query["access_token"];
               var path = context.HttpContext.Request.Path;
 
-              if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/deploy"))
-                  context.Token = accessToken;
+              if (path.StartsWithSegments("/hubs/deploy"))
+              {
+                  // 1) Önce query: ?access_token=
+                  var accessToken = context.Request.Query["access_token"].ToString();
+
+                  if (!string.IsNullOrWhiteSpace(accessToken))
+                  {
+                      context.Token = accessToken;
+                  }
+                  else
+                  {
+                      // 2) Yoksa Authorization: Bearer <token>
+                      var auth = context.Request.Headers.Authorization.ToString();
+                      const string prefix = "Bearer ";
+
+                      if (!string.IsNullOrWhiteSpace(auth) &&
+                          auth.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                      {
+                          context.Token = auth.Substring(prefix.Length).Trim();
+                      }
+                  }
+              }
 
               return Task.CompletedTask;
           }
+
       };
 
       o.TokenValidationParameters = new TokenValidationParameters
@@ -72,7 +91,7 @@ builder.Services.AddSignalR();
 var app = builder.Build();
 
 // HTTP pipeline
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 
 
