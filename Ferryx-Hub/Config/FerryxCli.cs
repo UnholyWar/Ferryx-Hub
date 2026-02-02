@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using Ferryx_Hub.Config.ConfClass;
+using System.Net.Http;
 
 namespace Ferryx_Hub.Config;
 
@@ -14,6 +15,13 @@ public static class FerryxCli
 
             case "reconfig":
                 return await RequestRestartAsync();
+            case "token":
+                {
+                    var cfg = FerryxConfigLoader.LoadOrCreateDefault();
+                    Console.WriteLine(cfg.Security?.JwtKey ?? "");
+                    return 0;
+                }
+
 
             default:
                 Console.WriteLine("Usage: ferryx where | reconfig");

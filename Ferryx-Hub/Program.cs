@@ -9,11 +9,12 @@ using System.Text;
 // ✅ 1) CLI komutlarını en başta yakala
 // Usage: ferryx where | ferryx reconfig | ferryx restart
 var cmd = (args.FirstOrDefault() ?? "serve").ToLowerInvariant();
-if (cmd is "where" or "reconfig")
+if (cmd is "where" or "reconfig" or "token")
 {
     var code = await FerryxCli.RunAsync(cmd);
     return code;
 }
+
 
 // ✅ 2) Serve tarafı: CLI/env url override istemiyorsan args'ı boşlayalım
 var options = new WebApplicationOptions { Args = Array.Empty<string>() };
@@ -139,6 +140,7 @@ app.MapPost("/api/deploy", async (
 
 // ✅ top-level dönüş hatası olmaması için RunAsync kullan
 await app.RunAsync();
+Console.WriteLine("Usage: ferryx where | reconfig | token");
 return 0;
 
 
