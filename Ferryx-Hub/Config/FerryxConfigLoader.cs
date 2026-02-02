@@ -19,7 +19,6 @@ public static class FerryxConfigLoader
             var cfg = Default();
             Write(cfg, overwrite: true);
             Console.WriteLine($"[CONFIG] Default config created at {FerryxPaths.ConfigPath}");
-            Console.WriteLine($"[token] {cfg.Security.JwtKey}");
             return cfg;
         }
 
