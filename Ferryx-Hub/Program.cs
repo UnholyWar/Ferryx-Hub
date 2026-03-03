@@ -73,9 +73,14 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 // ✅ SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(o =>
+{
+    // Server -> client ping (bağlantıyı canlı tutar)
+    o.KeepAliveInterval = TimeSpan.FromMinutes(1);
 
-
+    // Client'tan uzun süre hiç bir şey gelmese bile koparma
+    o.ClientTimeoutInterval = TimeSpan.FromHours(6);
+});
 
 var app = builder.Build();
 
